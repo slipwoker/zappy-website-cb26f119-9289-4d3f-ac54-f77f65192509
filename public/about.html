@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>אודות - מיכל ציפורניים</title>
+    <meta name="description" content="הכירו את מיכל - מניקוריסטית מקצועית עם שנות ניסיון בטיפוח ציפורניים. סיפור, ערכים ומחויבות למצוינות.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/favicon-512x512.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <!-- Cookie Consent -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-cookieconsent@3/dist/cookieconsent.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vanilla-cookieconsent@3/dist/cookieconsent.umd.js"></script>
+    <!-- Mickidum Accessibility Toolbar -->
+    <script src="https://cdn.jsdelivr.net/gh/mickidum/acc_toolbar/acctoolbar/acctoolbar.min.js"></script>
+<!-- Zappy Analytics -->
+<script>
+(function() {
+  'use strict';
+  
+  // Configuration
+  var config = {
+    websiteId: 'cb26f119-9289-4d3f-ac54-f77f65192509',
+    apiUrl: 'http://localhost:5001/api/analytics/track',
+    sessionDuration: 30 * 60 * 1000, // 30 minutes
+    trackPageViews: true,
+    trackClicks: true,
+    trackFormSubmissions: true
+  };
+  
+  // Generate or retrieve session ID
+  function getSessionId() {
+    var sessionKey = 'zappy_session_' + config.websiteId;
+    var session = null;
+    
+    try {
+      session = sessionStorage.getItem(sessionKey);
+      if (session) {
+        var sessionData = JSON.parse(session);
+        var now = Date.now();
+        
+        // Check if session is still valid
+        if (now - sessionData.timestamp < config.sessionDuration) {
+          // Update timestamp
+          sessionData.timestamp = now;
+          sessionStorage.setItem(sessionKey, JSON.stringify(sessionData));
+          return sessionData.id;
+        }
+      }
+    } catch (e) {
+      console.warn('Zappy Analytics: SessionStorage not available');
+    }
+    
+    // Generate new session ID
+    var newSessionId = 'zs_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    try {
+      sessionStorage.setItem(sessionKey, JSON.stringify({
+        id: newSessionId,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      // Continue without session storage
+    }
+    
+    return newSessionId;
+  }
+  
+  var sessionId = getSessionId();
+  
+  // Track an event
+  function trackEvent(eventType, data) {
+    data = data || {};
+    
+    var eventData = {
+      website_id: config.websiteId,
+      event_type: eventType,
+      page_path: window.location.pathname,
+      referrer: document.referrer || 'direct',
+      session_id: sessionId,
+      metadata: data
+    };
+    
+    // Use sendBeacon if available (better for page unload events)
+    if (navigator.sendBeacon) {
+      var blob = new Blob([JSON.stringify(eventData)], { type: 'application/json' });
+      navigator.sendBeacon(config.apiUrl, blob);
+    } else {
+      // Fallback to fetch
+      fetch(config.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(eventData),
+        keepalive: true
+      }).catch(function(error) {
+        console.warn('Zappy Analytics: Failed to track event', error);
+      });
+    }
+  }
+  
+  // Track page view
+  if (config.trackPageViews) {
+    trackEvent('pageview', {
+      title: document.title,
+      url: window.location.href
+    });
+  }
+  
+  // Track clicks on important elements
+  if (config.trackClicks) {
+    document.addEventListener('click', function(e) {
+      var target = e.target;
+      
+      // Track button clicks
+      if (target.tagName === 'BUTTON' || target.closest('button')) {
+        var button = target.tagName === 'BUTTON' ? target : target.closest('button');
+        trackEvent('click', {
+          element: 'button',
+          text: button.textContent.trim().substring(0, 100),
+          id: button.id || null,
+          class: button.className || null
+        });
+      }
+      
+      // Track link clicks
+      else if (target.tagName === 'A' || target.closest('a')) {
+        var link = target.tagName === 'A' ? target : target.closest('a');
+        trackEvent('click', {
+          element: 'link',
+          text: link.textContent.trim().substring(0, 100),
+          href: link.href,
+          external: link.hostname !== window.location.hostname
+        });
+      }
+    }, true);
+  }
+  
+  // Track form submissions
+  if (config.trackFormSubmissions) {
+    document.addEventListener('submit', function(e) {
+      var form = e.target;
+      
+      trackEvent('form_submit', {
+        form_id: form.id || null,
+        form_name: form.name || null,
+        form_action: form.action || null,
+        form_method: form.method || 'GET'
+      });
+    }, true);
+  }
+  
+  // Track time on page (send on page unload)
+  var pageLoadTime = Date.now();
+  
+  window.addEventListener('beforeunload', function() {
+    var timeOnPage = Math.floor((Date.now() - pageLoadTime) / 1000); // in seconds
+    
+    trackEvent('page_unload', {
+      time_on_page: timeOnPage,
+      page_path: window.location.pathname
+    });
+  });
+  
+  // Expose tracking function globally for custom events
+  window.zappyAnalytics = {
+    track: trackEvent,
+    getSessionId: function() { return sessionId; }
+  };
+  
+})();
+</script>
+<!-- End Zappy Analytics -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <div class="nav-brand"><a href="/" class="logo-link" aria-label="Home" style="display: inline-block; text-decoration: none; line-height: 0; margin-right: 0; vertical-align: middle;"><img src="assets/logo.webp" alt="מיכל ציפורניים" class="logo" style="max-height: 60px; height: auto; width: auto; max-width: 250px; object-fit: contain; background: transparent; image-rendering: crisp-edges;" /></a><span class="brand-title">מיכל ציפורניים</span>
+            </div>
+            
+            <button class="mobile-toggle" id="mobileToggle" aria-label="תפריט">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="/services">שירותים</a></li>
+                <li><a href="/gallery">גלריה</a></li>
+                <li><a href="/about" class="active">אודות</a></li>
+                <li><a href="/contact">צור קשר</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="page-hero">
+        <div class="container">
+            <h1>הסיפור שלי</h1>
+            <p>מסע של תשוקה, מקצועיות ויצירתיות בעולם הציפורניים</p>
+        </div>
+    </section>
+
+    <section class="about-story">
+        <div class="container">
+            <div class="about-content-split">
+                <div class="about-text">
+                    <h2>ברוכים הבאים לסטודיו שלי</h2>
+                    <p>שמי מיכל, ואני מתמחה בטיפוח ציפורניים כבר למעלה מ-10 שנים. המסע שלי בעולם היופי והציפורניים התחיל מתוך אהבה אמיתית לאומנות, לפרטים הקטנים ולרצון לגרום לנשים להרגיש יפות, בטוחות ומיוחדות.</p>
+                    <p>בשנים האחרונות, הקמתי את הסטודיו הפרטי שלי - מרחב אלגנטי ומרגיע שבו כל לקוחה מקבלת את מלוא תשומת הלב והמקצועיות שמגיעה לה. אני מאמינה שציפורניים מטופחות הן לא רק עניין אסתטי, אלא גם דרך להרגיש טוב עם עצמך ולהעביר ביטחון והערכה עצמית.</p>
+                    <p>לאורך השנים, השתלמתי בטכניקות המתקדמות ביותר בתחום, למדתי מהמומחים הטובים ביותר בארץ ובעולם, ומשקיעה באופן קבוע בהשתלמויות והכשרות כדי להביא לכן את הטוב ביותר. כל טיפול אצלי הוא שילוב של מקצועיות, יצירתיות ותשומת לב אישית.</p>
+                </div>
+                <div class="about-image">
+                    <img src="assets/business-hero.webp" alt="הסטודיו של מיכל">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="values-section">
+        <div class="container">
+            <h2 class="section-title">הערכים שלי</h2>
+            <div class="values-grid">
+                <div class="value-card">
+                    <div class="value-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <h3>מקצועיות</h3>
+                    <p>שנות ניסיון, הכשרות מתקדמות והתמחות בטכניקות החדשניות ביותר. כל טיפול מבוצע בדיוק, בסבלנות ובמומחיות.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon">
+                        <i class="fas fa-heart"></i>
+                    </div>
+                    <h3>יחס אישי</h3>
+                    <p>כל לקוחה היא עולם ומלואו. אני מקדישה זמן להקשיב, להבין את הצרכים והרצונות ולתת מענה מדויק ואישי.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon">
+                        <i class="fas fa-gem"></i>
+                    </div>
+                    <h3>איכות</h3>
+                    <p>שימוש בלעדי במוצרים איכוtiים ממותגים מובילים, חומרים בריאים לציפורן וציוד מתקדם.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <h3>יצירתיות</h3>
+                    <p>כל עיצוב הוא יצירה ייחודית. אני אוהבת ליצור, לחדש ולהתאים כל טיפול בדיוק לאישיות ולסגנון של הלקוחה.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="expertise-section">
+        <div class="container">
+            <h2 class="section-title">תחומי ההתמחות שלי</h2>
+            <div class="expertise-grid">
+                <div class="expertise-item">
+                    <div class="expertise-number">01</div>
+                    <h3>מניקור ג'ל מתקדם</h3>
+                    <p>התמחות בטכניקות מניקור ג'ל מתקדמות, כולל שיטות עבודה חדשניות שמבטיחות עמידות מקסימלית ומראה מושלם.</p>
+                </div>
+                <div class="expertise-item">
+                    <div class="expertise-number">02</div>
+                    <h3>בניית ציפורניים</h3>
+                    <p>מומחית בבניית ציפורניים בג'ל ואקריל, עם דגש על מראה טבעי, חוזק ועמידות. כל בניה מותאמת אישית לצורת האצבע.</p>
+                </div>
+                <div class="expertise-item">
+                    <div class="expertise-number">03</div>
+                    <h3>עיצוב אומנותי</h3>
+                    <p>יצירת עיצובים מיוחדים ואומנותיים - מציורים עדינים ועד עיצובים מורכבים לאירועים. כל עיצוב הוא יצירת אמנות.</p>
+                </div>
+                <div class="expertise-item">
+                    <div class="expertise-number">04</div>
+                    <h3>טיפולי פדיקור ספא</h3>
+                    <p>טיפולים מפנקים ומקצועיים לרגליים, המשלבים טכניקות ספא מתקדמות עם תוצאות מושלמות וארוכות טווח.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="certifications-section">
+        <div class="container">
+            <h2 class="section-title">הכשרות והסמכות</h2>
+            <div class="certifications-content">
+                <div class="cert-list">
+                    <div class="cert-item">
+                        <i class="fas fa-certificate"></i>
+                        <div>
+                            <h4>קורס מניקוריסטית מוסמכת</h4>
+                            <p>בית הספר למקצועות היופי, תל אביב</p>
+                        </div>
+                    </div>
+                    <div class="cert-item">
+                        <i class="fas fa-certificate"></i>
+                        <div>
+                            <h4>התמחות בבניית ציפורניים</h4>
+                            <p>קורס מתקדם בטכניקות בניה בג'ל ואקריל</p>
+                        </div>
+                    </div>
+                    <div class="cert-item">
+                        <i class="fas fa-certificate"></i>
+                        <div>
+                            <h4>עיצוב אומנותי מתקדם</h4>
+                            <p>סדנאות מקצועיות בעיצוב ציפורניים</p>
+                        </div>
+                    </div>
+                    <div class="cert-item">
+                        <i class="fas fa-certificate"></i>
+                        <div>
+                            <h4>השתלמויות שוטפות</h4>
+                            <p>השתתפות קבועה בכנסים, סדנאות וקורסי העשרה</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="cert-image">
+                    <img src="assets/business-service-1.webp" alt="הסמכות מקצועיות">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="studio-section">
+        <div class="container">
+            <h2 class="section-title">הסטודיו</h2>
+            <div class="studio-content">
+                <p class="studio-intro">הסטודיו שלי הוא מרחב אלגנטי, מעוצב בקפידה ומותאם במיוחד לטיפולי ציפורניים ברמה הגבוהה ביותר. כל פרט תוכנן כדי ליצור אווירה מרגיעה ומפנקת שבה תוכלי להרגיש בנוח ולהתמסר לחוויה.</p>
+                
+                <div class="studio-features">
+                    <div class="studio-feature">
+                        <i class="fas fa-couch"></i>
+                        <h4>אווירה מפנקת</h4>
+                        <p>עיצוב אלגנטי, תאורה רכה ומוזיקה מרגיעה</p>
+                    </div>
+                    <div class="studio-feature">
+                        <i class="fas fa-shield-alt"></i>
+                        <h4>היגיינה מקסימלית</h4>
+                        <p>סטריליזציה מלאה של כל הכלים והציוד</p>
+                    </div>
+                    <div class="studio-feature">
+                        <i class="fas fa-tools"></i>
+                        <h4>ציוד מתקדם</h4>
+                        <p>שימוש בציוד ומכשור מהמתקדמים בתחום</p>
+                    </div>
+                    <div class="studio-feature">
+                        <i class="fas fa-coffee"></i>
+                        <h4>אירוח מכל הלב</h4>
+                        <p>משקאות חמים וקרים, ואווירה ביתית</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>בואי להכיר אותי מקרוב</h2>
+                <p>אשמח לפגוש אותך בסטודיו וליצור ביחד את הציפורניים המושלמות שלך</p>
+                <a href="/contact" class="btn btn-primary btn-large">קבעי תור</a>
+            </div>
+        </div>
+    </section>
+
+    
+    <!-- Legal Footer -->
+    <footer class="legal-footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-main">
+            <p>© 2025 מיכל ציפורניים. כל הזכויות שמורות.</p>
+            <p class="zappy-attribution">נוצר באמצעות Zappy</p>
+          </div>
+          <div class="footer-social"><a href="[facebook_url]" target="_blank" rel="noopener noreferrer" aria-label="פייסבוק">
+                    <i class="fab fa-facebook-f"></i>
+                </a>
+<a href="[instagram_url]" target="_blank" rel="noopener noreferrer" aria-label="אינסטגרם">
+                    <i class="fab fa-instagram"></i>
+                </a>
+<a href="[whatsapp_url]" target="_blank" rel="noopener noreferrer" aria-label="ווטסאפ">
+                    <i class="fab fa-whatsapp"></i>
+                </a></div>
+          <div class="footer-legal">
+            <a href="privacy.html" target="_blank" rel="noopener" aria-label="מדיניות פרטיות">
+              מדיניות פרטיות
+            </a>
+            <span class="separator">|</span>
+            <a href="accessibility.html" target="_blank" rel="noopener" aria-label="נגישות">
+              נגישות
+            </a>
+            <span class="separator">|</span>
+            <a href="terms.html" target="_blank" rel="noopener" aria-label="תנאי שימוש">
+              תנאי שימוש
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <a href="tel:[phone_number]" class="phone-float" aria-label="התקשרי אלינו">
+        <i class="fas fa-phone"></i>
+    </a>
+    <a href="https://wa.me/[whatsapp_number]" target="_blank" class="whatsapp-float" aria-label="ווטסאפ" rel="noopener noreferrer">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+    <div data-integration="accessibility:toolbar"></div>
+    <script src="script.js"></script>
+</body>
+</html>

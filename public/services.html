@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>שירותים - מיכל ציפורניים</title>
+    <meta name="description" content="מגוון רחב של שירותי טיפוח ציפורניים: מניקור ג'ל, בניית ציפורניים, פדיקור ספא ועוד. טיפולים מקצועיים באיכות פרימיום.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/favicon-512x512.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <!-- Cookie Consent -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-cookieconsent@3/dist/cookieconsent.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vanilla-cookieconsent@3/dist/cookieconsent.umd.js"></script>
+    <!-- Mickidum Accessibility Toolbar -->
+    <script src="https://cdn.jsdelivr.net/gh/mickidum/acc_toolbar/acctoolbar/acctoolbar.min.js"></script>
+<!-- Zappy Analytics -->
+<script>
+(function() {
+  'use strict';
+  
+  // Configuration
+  var config = {
+    websiteId: 'cb26f119-9289-4d3f-ac54-f77f65192509',
+    apiUrl: 'http://localhost:5001/api/analytics/track',
+    sessionDuration: 30 * 60 * 1000, // 30 minutes
+    trackPageViews: true,
+    trackClicks: true,
+    trackFormSubmissions: true
+  };
+  
+  // Generate or retrieve session ID
+  function getSessionId() {
+    var sessionKey = 'zappy_session_' + config.websiteId;
+    var session = null;
+    
+    try {
+      session = sessionStorage.getItem(sessionKey);
+      if (session) {
+        var sessionData = JSON.parse(session);
+        var now = Date.now();
+        
+        // Check if session is still valid
+        if (now - sessionData.timestamp < config.sessionDuration) {
+          // Update timestamp
+          sessionData.timestamp = now;
+          sessionStorage.setItem(sessionKey, JSON.stringify(sessionData));
+          return sessionData.id;
+        }
+      }
+    } catch (e) {
+      console.warn('Zappy Analytics: SessionStorage not available');
+    }
+    
+    // Generate new session ID
+    var newSessionId = 'zs_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    try {
+      sessionStorage.setItem(sessionKey, JSON.stringify({
+        id: newSessionId,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      // Continue without session storage
+    }
+    
+    return newSessionId;
+  }
+  
+  var sessionId = getSessionId();
+  
+  // Track an event
+  function trackEvent(eventType, data) {
+    data = data || {};
+    
+    var eventData = {
+      website_id: config.websiteId,
+      event_type: eventType,
+      page_path: window.location.pathname,
+      referrer: document.referrer || 'direct',
+      session_id: sessionId,
+      metadata: data
+    };
+    
+    // Use sendBeacon if available (better for page unload events)
+    if (navigator.sendBeacon) {
+      var blob = new Blob([JSON.stringify(eventData)], { type: 'application/json' });
+      navigator.sendBeacon(config.apiUrl, blob);
+    } else {
+      // Fallback to fetch
+      fetch(config.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(eventData),
+        keepalive: true
+      }).catch(function(error) {
+        console.warn('Zappy Analytics: Failed to track event', error);
+      });
+    }
+  }
+  
+  // Track page view
+  if (config.trackPageViews) {
+    trackEvent('pageview', {
+      title: document.title,
+      url: window.location.href
+    });
+  }
+  
+  // Track clicks on important elements
+  if (config.trackClicks) {
+    document.addEventListener('click', function(e) {
+      var target = e.target;
+      
+      // Track button clicks
+      if (target.tagName === 'BUTTON' || target.closest('button')) {
+        var button = target.tagName === 'BUTTON' ? target : target.closest('button');
+        trackEvent('click', {
+          element: 'button',
+          text: button.textContent.trim().substring(0, 100),
+          id: button.id || null,
+          class: button.className || null
+        });
+      }
+      
+      // Track link clicks
+      else if (target.tagName === 'A' || target.closest('a')) {
+        var link = target.tagName === 'A' ? target : target.closest('a');
+        trackEvent('click', {
+          element: 'link',
+          text: link.textContent.trim().substring(0, 100),
+          href: link.href,
+          external: link.hostname !== window.location.hostname
+        });
+      }
+    }, true);
+  }
+  
+  // Track form submissions
+  if (config.trackFormSubmissions) {
+    document.addEventListener('submit', function(e) {
+      var form = e.target;
+      
+      trackEvent('form_submit', {
+        form_id: form.id || null,
+        form_name: form.name || null,
+        form_action: form.action || null,
+        form_method: form.method || 'GET'
+      });
+    }, true);
+  }
+  
+  // Track time on page (send on page unload)
+  var pageLoadTime = Date.now();
+  
+  window.addEventListener('beforeunload', function() {
+    var timeOnPage = Math.floor((Date.now() - pageLoadTime) / 1000); // in seconds
+    
+    trackEvent('page_unload', {
+      time_on_page: timeOnPage,
+      page_path: window.location.pathname
+    });
+  });
+  
+  // Expose tracking function globally for custom events
+  window.zappyAnalytics = {
+    track: trackEvent,
+    getSessionId: function() { return sessionId; }
+  };
+  
+})();
+</script>
+<!-- End Zappy Analytics -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <div class="nav-brand"><a href="/" class="logo-link" aria-label="Home" style="display: inline-block; text-decoration: none; line-height: 0; margin-right: 0; vertical-align: middle;"><img src="assets/logo.webp" alt="מיכל ציפורניים" class="logo" style="max-height: 60px; height: auto; width: auto; max-width: 250px; object-fit: contain; background: transparent; image-rendering: crisp-edges;" /></a><span class="brand-title">מיכל ציפורניים</span>
+            </div>
+            
+            <button class="mobile-toggle" id="mobileToggle" aria-label="תפריט">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="/services" class="active">שירותים</a></li>
+                <li><a href="/gallery">גלריה</a></li>
+                <li><a href="/about">אודות</a></li>
+                <li><a href="/contact">צור קשר</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="page-hero">
+        <div class="container">
+            <h1>השירותים שלנו</h1>
+            <p>טיפולים מקצועיים המותאמים אישית לצרכים שלך</p>
+        </div>
+    </section>
+
+    <section class="services-detailed">
+        <div class="container">
+            <div class="service-detail">
+                <div class="service-detail-image">
+                    <img src="assets/business-hero.webp" alt="מניקור ג'ל">
+                </div>
+                <div class="service-detail-content">
+                    <h2>מניקור ג'ל</h2>
+                    <p class="service-price">החל מ-₪120</p>
+                    <p>טיפול מניקור מושלם המשלב מקצועיות, דיוק ותוצאה מהממת. הטיפול כולל:</p>
+                    <ul class="service-features">
+                        <li><i class="fas fa-check"></i> עיצוב מדויק של הציפורניים לפי הצורה המועדפת</li>
+                        <li><i class="fas fa-check"></i> הסרת עור מת וטיפול בציפורניות</li>
+                        <li><i class="fas fa-check"></i> צביעה בלק ג'ל איכותי מהמותגים המובילים</li>
+                        <li><i class="fas fa-check"></i> עמידות של עד 3 שבועות</li>
+                        <li><i class="fas fa-check"></i> גימור מושלם עם ברק מקצועי</li>
+                        <li><i class="fas fa-check"></i> טיפול מפנק בידיים עם קרם לחות</li>
+                    </ul>
+                    <p>הלק ג'ל שלנו עמיד במיוחד, לא מתקלף ושומר על ברק מושלם לאורך זמן. מתאים במיוחד לנשים עסוקות שרוצות ידיים מטופחות ומושלמות ללא צורך בתחזוקה תכופה.</p>
+                    <a href="/contact" class="btn btn-primary">קבעי תור</a>
+                </div>
+            </div>
+
+            <div class="service-detail reverse">
+                <div class="service-detail-image">
+                    <img src="assets/business-service-1.webp" alt="בניית ציפורניים">
+                </div>
+                <div class="service-detail-content">
+                    <h2>בניית ציפורניים</h2>
+                    <p class="service-price">החל מ-₪250</p>
+                    <p>בניית ציפורניים מקצועית בטכניקות המתקדמות ביותר. הטיפול כולל:</p>
+                    <ul class="service-features">
+                        <li><i class="fas fa-check"></i> בניה באיכות פרימיום בטכניקת ג'ל או אקריל</li>
+                        <li><i class="fas fa-check"></i> התאמה מושלמת לצורת האצבע והציפורן הטבעית</li>
+                        <li><i class="fas fa-check"></i> מראה טבעי ואלגנטי</li>
+                        <li><i class="fas fa-check"></i> חוזק ועמידות יוצאי דופן</li>
+                        <li><i class="fas fa-check"></i> בחירה מתוך מגוון צורות: מרובע, שקד, אובלי ועוד</li>
+                        <li><i class="fas fa-check"></i> צביעה וגימור מושלם</li>
+                    </ul>
+                    <p>הבניה שלנו נראית כמו ציפורניים אמיתיות, חזקה ועמידה לאורך זמן. מתאימה לנשים שרוצות ציפורניים ארוכות ויפות או לאלו שהציפורניים הטבעיות שלהן חלשות ושבירות. התוצאה היא ציפורניים מושלמות שמחזיקות מעמד לשבועות רבים.</p>
+                    <a href="/contact" class="btn btn-primary">קבעי תור</a>
+                </div>
+            </div>
+
+            <div class="service-detail">
+                <div class="service-detail-image">
+                    <img src="assets/business-service-2.webp" alt="פדיקור ספא">
+                </div>
+                <div class="service-detail-content">
+                    <h2>פדיקור ספא</h2>
+                    <p class="service-price">החל מ-₪150</p>
+                    <p>טיפול פדיקור מפנק ומרגיע שמשאיר את הרגליים רכות, חלקות ומטופחות. הטיפול כולל:</p>
+                    <ul class="service-features">
+                        <li><i class="fas fa-check"></i> השרייה במים חמים עם שמנים ארומטיים</li>
+                        <li><i class="fas fa-check"></i> פילינג עדין להסרת תאי עור מתים</li>
+                        <li><i class="fas fa-check"></i> הסרת יבלות ועור מת</li>
+                        <li><i class="fas fa-check"></i> עיצוב וטיפול בציפורניים</li>
+                        <li><i class="fas fa-check"></i> עיסוי רגליים מרגיע ומפנק</li>
+                        <li><i class="fas fa-check"></i> צביעה בג'ל איכותי</li>
+                        <li><i class="fas fa-check"></i> טיפול בקרם לחות מזין</li>
+                    </ul>
+                    <p>הפדיקור שלנו הוא חוויה של פינוק אמיתי שמשאירה את הרגליים במצב מושלם. מתאים במיוחד לפני אירועים, חופשות או פשוט כטיפול מפנק שכל אישה מגיע לה.</p>
+                    <a href="/contact" class="btn btn-primary">קבעי תור</a>
+                </div>
+            </div>
+
+            <div class="service-detail reverse">
+                <div class="service-detail-image">
+                    <img src="assets/business-service-3.webp" alt="עיצוב ציפורניים">
+                </div>
+                <div class="service-detail-content">
+                    <h2>עיצוב אומנותי</h2>
+                    <p class="service-price">החל מ-₪150</p>
+                    <p>עיצובים מיוחדים ויצירתיים שהופכים את הציפורניים שלך ליצירת אמנות. הטיפול כולל:</p>
+                    <ul class="service-features">
+                        <li><i class="fas fa-check"></i> עיצובים אישיים ומותאמים אישית</li>
+                        <li><i class="fas fa-check"></i> ציורים עדינים ומדויקים</li>
+                        <li><i class="fas fa-check"></i> שימוש באבני סברובסקי ואביזרים מיוחדים</li>
+                        <li><i class="fas fa-check"></i> טכניקות מתקדמות כמו אומברה, שיש ועוד</li>
+                        <li><i class="fas fa-check"></i> התאמה לאירועים מיוחדים</li>
+                        <li><i class="fas fa-check"></i> יצירתיות ללא גבולות</li>
+                    </ul>
+                    <p>העיצובים שלנו מתאימים לכל אירוע - מחתונות ואירועי ערב ועד חגים ואירועים מיוחדים. כל עיצוב הוא ייחודי ומותאם במיוחד עבורך, עם תשומת לב לכל פרט קטן.</p>
+                    <a href="/contact" class="btn btn-primary">קבעי תור</a>
+                </div>
+            </div>
+
+            <div class="service-detail">
+                <div class="service-detail-image">
+                    <img src="assets/business-service-4.webp" alt="תיקונים ותחזוקה">
+                </div>
+                <div class="service-detail-content">
+                    <h2>תיקונים ותחזוקה</h2>
+                    <p class="service-price">החל מ-₪80</p>
+                    <p>שירותי תיקון ותחזוקה לשמירה על מראה מושלם של הציפורניים. הטיפול כולל:</p>
+                    <ul class="service-features">
+                        <li><i class="fas fa-check"></i> תיקון ציפורן שבורה</li>
+                        <li><i class="fas fa-check"></i> מילוי ציפורניים בנויות</li>
+                        <li><i class="fas fa-check"></i> החלפת צבע על ציפורניים בנויות</li>
+                        <li><i class="fas fa-check"></i> הסרת ג'ל או אקריל</li>
+                        <li><i class="fas fa-check"></i> טיפול מחזק לציפורניים</li>
+                        <li><i class="fas fa-check"></i> ייעוץ מקצועי לטיפוח ביתי</li>
+                    </ul>
+                    <p>שירותי התחזוקה שלנו מבטיחים שהציפורניים שלך יישארו במצב מושלם לאורך זמן. אנחנו ממליצות על תחזוקה שוטפת כל 2-3 שבועות לשמירה על מראה מושלם.</p>
+                    <a href="/contact" class="btn btn-primary">קבעי תור</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="packages-section">
+        <div class="container">
+            <h2 class="section-title">חבילות מיוחדות</h2>
+            <p class="section-subtitle">חבילות שמשלבות מספר טיפולים במחיר מיוחד</p>
+            
+            <div class="packages-grid">
+                <div class="package-card">
+                    <div class="package-badge">הכי פופולרי</div>
+                    <h3>חבילת פינוק</h3>
+                    <p class="package-price">₪280</p>
+                    <ul class="package-features">
+                        <li><i class="fas fa-check"></i> מניקור ג'ל מלא</li>
+                        <li><i class="fas fa-check"></i> פדיקור ספא</li>
+                        <li><i class="fas fa-check"></i> עיסוי ידיים ורגליים</li>
+                    </ul>
+                    <p class="package-savings">חיסכון של ₪40!</p>
+                    <a href="/contact" class="btn btn-secondary">קבעי תור</a>
+                </div>
+                
+                <div class="package-card featured">
+                    <div class="package-badge">מומלץ</div>
+                    <h3>חבילת כלה</h3>
+                    <p class="package-price">₪550</p>
+                    <ul class="package-features">
+                        <li><i class="fas fa-check"></i> בניית ציפורניים מלאה</li>
+                        <li><i class="fas fa-check"></i> עיצוב אומנותי מיוחד</li>
+                        <li><i class="fas fa-check"></i> פדיקור ספא מפנק</li>
+                        <li><i class="fas fa-check"></i> תיקון חינם לפני החתונה</li>
+                    </ul>
+                    <p class="package-savings">חיסכון של ₪80!</p>
+                    <a href="/contact" class="btn btn-primary">קבעי תור</a>
+                </div>
+                
+                <div class="package-card">
+                    <div class="package-badge">חסכוני</div>
+                    <h3>מנוי חודשי</h3>
+                    <p class="package-price">₪400/חודש</p>
+                    <ul class="package-features">
+                        <li><i class="fas fa-check"></i> 2 טיפולי מניקור ג'ל</li>
+                        <li><i class="fas fa-check"></i> פדיקור אחד</li>
+                        <li><i class="fas fa-check"></i> עדיפות בקביעת תורים</li>
+                        <li><i class="fas fa-check"></i> הנחה על שירותים נוספים</li>
+                    </ul>
+                    <p class="package-savings">חיסכון של ₪70!</p>
+                    <a href="/contact" class="btn btn-secondary">קבעי תור</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>מעוניינת בטיפול?</h2>
+                <p>צרי קשר עכשיו וקבעי תור לטיפול שמתאים לך</p>
+                <a href="/contact" class="btn btn-primary btn-large">קבעי תור</a>
+            </div>
+        </div>
+    </section>
+
+    
+    <!-- Legal Footer -->
+    <footer class="legal-footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-main">
+            <p>© 2025 מיכל ציפורניים. כל הזכויות שמורות.</p>
+            <p class="zappy-attribution">נוצר באמצעות Zappy</p>
+          </div>
+          <div class="footer-social"><a href="[facebook_url]" target="_blank" rel="noopener noreferrer" aria-label="פייסבוק">
+                    <i class="fab fa-facebook-f"></i>
+                </a>
+<a href="[instagram_url]" target="_blank" rel="noopener noreferrer" aria-label="אינסטגרם">
+                    <i class="fab fa-instagram"></i>
+                </a>
+<a href="[whatsapp_url]" target="_blank" rel="noopener noreferrer" aria-label="ווטסאפ">
+                    <i class="fab fa-whatsapp"></i>
+                </a></div>
+          <div class="footer-legal">
+            <a href="privacy.html" target="_blank" rel="noopener" aria-label="מדיניות פרטיות">
+              מדיניות פרטיות
+            </a>
+            <span class="separator">|</span>
+            <a href="accessibility.html" target="_blank" rel="noopener" aria-label="נגישות">
+              נגישות
+            </a>
+            <span class="separator">|</span>
+            <a href="terms.html" target="_blank" rel="noopener" aria-label="תנאי שימוש">
+              תנאי שימוש
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <a href="tel:[phone_number]" class="phone-float" aria-label="התקשרי אלינו">
+        <i class="fas fa-phone"></i>
+    </a>
+    <a href="https://wa.me/[whatsapp_number]" target="_blank" class="whatsapp-float" aria-label="ווטסאפ" rel="noopener noreferrer">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+    <div data-integration="accessibility:toolbar"></div>
+    <script src="script.js"></script>
+</body>
+</html>
