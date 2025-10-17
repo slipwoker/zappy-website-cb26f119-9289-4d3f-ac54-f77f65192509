@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://-cb26f119.zappy5.app/sitemap.xml
+Sitemap: https://michal-tzipornayim.zappy5.app/sitemap.xml
